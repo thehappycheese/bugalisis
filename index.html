@@ -1,0 +1,266 @@
+
+
+
+
+<html>
+<head>
+<style>
+	div{
+		height:23px;
+		border:1px solid grey;
+		text-align:right;
+		font-family:sans-serif;
+		font-size:14px;
+		line-height:20px;
+		margin-bottom:1px;
+		margin-left:1px;
+		display:inline-block;
+	}
+	body{
+		margin:30px;
+	}
+	table{
+		font-family:sans-serif;
+		font-size:14px;
+		line-height:20px;
+		color:inherit;
+	}
+	h1,h2{
+		font-family:sans-serif;
+	}
+	h1{
+		font-size:20px;
+	}
+	h2{
+		font-size:10px;
+	}
+</style>
+</head>
+<body>
+<h1>Prison Planet - William Dietz</h1>
+<h2>Prison Planet - William Dietz <span style="color:red;">(click the dots)</span></h2>
+</body>
+<script src="d3.v3.min.js"></script>
+<script src="chroma.min.js"></script>
+<script src="commonwords.js"></script>
+<script>
+
+
+xhr = new XMLHttpRequest();                     
+xhr.open(
+    "GET",                          
+    "d/pp.txt",       
+    true                            
+  );
+xhr.onreadystatechange=function(){
+    if (xhr.readyState==4){
+      if (xhr.status==200){
+        parseResponse(xhr.responseText);
+      }else{
+        //handle the HTTP error...
+		  
+      }
+    };
+  };
+xhr.send(null); 
+
+
+
+
+
+
+
+function eliminateCommons(arr){
+	var result = arr;
+
+	var word;
+	var j;
+	for (var i = 0;i<common.length;i++) {
+		word = common[i];
+
+		for(j=0;j<arr.length;j++){
+			if(arr[j].word.split(" ").indexOf(word)>-1){
+				console.log(i,j,word,arr[j].word,arr[j].word.split(" ").indexOf(word))
+				arr.splice(j,1);
+				j-=1;
+			}
+		}
+
+
+	};
+
+
+	return result;
+}
+
+
+
+
+
+
+
+var colscale = new chroma.scale(['red','yellow','lime']).mode('lab');
+
+var maxposition = 0;
+var maxcount = 0;
+var mincount = 0;
+
+function parseResponse(txt){
+	//var words = txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g)
+	//var phrase = txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30}[\s][a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g);
+	var phrase = txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g);
+	
+	console.log("Number of matches: "+phrase.length);
+	
+	for(var i = 0;i<phrase.length;i++){
+		// eliminate punctuation
+		phrase[i] = phrase[i].replace(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\r\n]+/g,'').toLowerCase()
+		if(phrase[i][0] == " "){
+			phrase[i] = phrase[i].split('');
+			phrase[i].shift();
+			phrase[i] = phrase[i].join('');
+			
+		}
+		if(phrase[i][phrase[i].length-1] == " "){
+			phrase[i] = phrase[i].split('');
+			phrase[i].pop();
+			phrase[i] = phrase[i].join('');
+			
+		}
+	}
+	
+	function addWord(word, position){
+		if(freq_dict[word] == undefined){
+			freq_dict[word] = {
+				word:word,
+				count:0,
+				positions:[]
+			}
+		}
+		freq_dict[word].count++;
+		freq_dict[word].positions.push(position);
+	}
+	var freq_dict = {};
+	for(i=0;i<phrase.length;i++){
+		addWord(phrase[i],i);
+	}
+	maxposition = i-1;
+	var freq_list = [];
+	for(var i in freq_dict){
+		freq_list.push(freq_dict[i]);
+	}
+	
+	freq_list.sort(function(a,b){
+		return b.count-a.count;
+	})
+	
+	
+	eliminateCommons(freq_list)
+	
+	
+	while(freq_list.length>100){
+		freq_list.pop();
+	}
+	
+	
+	maxcount = -Infinity;
+	mincount = Infinity;
+	for(i=0;i<freq_list.length;i++){
+		if(freq_list[i].count<mincount){
+			mincount = freq_list[i].count;
+		}
+		if(freq_list[i].count>maxcount){
+			maxcount = freq_list[i].count;
+		}
+	}
+	window.fd = freq_dict;
+	window.fl = freq_list;
+	update()
+}
+
+
+
+
+fl = []
+
+var svg = d3.select("body").append("svg")
+									.attr("width",800)
+									.attr("height",900)
+									
+									
+									
+
+
+
+var rows;
+var dots;
+function update(){
+	if(fl.length==0){
+		return
+	}
+	rows = svg.selectAll(".r")
+					.data(fl);
+	rows.enter()
+			.append("g")
+			.attr("class","r")
+	rows.exit()
+			.remove();
+	rows
+			.attr("transform",function(d){return "translate(0,"+(fl.indexOf(d)/fl.length*750+25).toFixed(0)+")"})
+			
+	
+	lbls = d3.selectAll(".r").selectAll("text")
+			.data(function(d){return [this.parentNode.__data__.word]})
+	
+	lbls.enter()
+			.append("text")
+			.attr("x",0)
+			.attr("y",0)
+	lbls
+			.style("font-size","8px")
+			.style("fill","black")
+			.text(function(d){return d})
+			
+	
+	dots = d3.selectAll(".r").selectAll(".dot")
+			.data(function(d){return this.parentNode.__data__.positions});
+	dots.enter()
+			.append("circle")
+			.attr("class","dot");
+	dots.exit().remove();
+	dots
+			.attr("cx",function(d){return d/maxposition*700+100})
+			.attr("cy",0)
+			.attr("r",1)
+			.style("fill","black")
+			
+	svg.on("mousedown",function(d,i){
+	
+		update();
+		dots.each(function(d,i){
+			var diff = Math.abs(parseFloat(this.getAttribute("cx"))-d3.event.offsetX);
+			if(diff<4){
+				d3.select(this)
+					.transition()
+					.attr("r",4-diff)
+					.style("fill","red");
+				d3.select(this.parentElement)
+					.style("fill","lightgrey")
+				d3.select(this.parentElement).select("text")
+					.transition()
+					.style("fill","red")
+				//.select("text")
+				//.style("font-weight:bold;")
+			}
+		})
+	})
+	
+	
+}
+
+
+
+
+// 41473
+</script>
+</html>

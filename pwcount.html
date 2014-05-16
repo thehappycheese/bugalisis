@@ -1,0 +1,153 @@
+
+
+
+
+<html>
+<head>
+<style>
+	div{
+		height:23px;
+		border:1px solid grey;
+		text-align:right;
+		font-family:sans-serif;
+		font-size:14px;
+		line-height:20px;
+		margin-bottom:1px;
+		margin-left:1px;
+		display:inline-block;
+	}
+	body{
+		margin:30px;
+	}
+	table{
+		font-family:sans-serif;
+		font-size:14px;
+		line-height:20px;
+		color:inherit;
+	}
+</style>
+</head>
+<body>
+</body>
+<script src="d3.v3.min.js"></script>
+<script src="chroma.min.js"></script>
+<script>
+
+
+xhr = new XMLHttpRequest();                     
+xhr.open(
+    "GET",                          
+    "food.txt",       
+    true                            
+  );
+xhr.onreadystatechange=function(){
+    if (xhr.readyState==4){
+      if (xhr.status==200){
+        parseResponse(xhr.responseText);
+      }else{
+        //handle the HTTP error...
+		  
+      }
+    };
+  };
+xhr.send(null); 
+
+
+
+var colscale = new chroma.scale(['red','yellow','lime']).mode('lab');
+
+function parseResponse(txt){
+	//var words = txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g)
+	//var phrase = txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30}[\s][a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g);
+	var phrase = [];
+	phrase = phrase.concat(txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30}[\s][a-zA-Z]{1,30}[\s][a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g));// 3 word phrase
+	phrase = phrase.concat(txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{1,30}[\s][a-zA-Z]{1,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g)); // 2 word phrase
+	phrase = phrase.concat(txt.match(/[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]([a-zA-Z]{4,30})[\.,-\/#!$%\^&\*;:{}=\-_`~()\s\r\n]/g)); // word more than 3 letters
+	console.log("Number of matches: "+phrase.length);
+	
+	for(var i = 0;i<phrase.length;i++){
+		phrase[i] = phrase[i].replace(/[\.,-\/#!$%\^&\*;:{}=\-_`~()]+/g,'').toLowerCase()
+	}
+	
+	function addWord(word, position){
+		if(freq_dict[word] == undefined){
+			freq_dict[word] = {
+				word:word,
+				count:0,
+				positions:[]
+			}
+		}
+		freq_dict[word].count++;
+		freq_dict[word].positions.push(position);
+	}
+	
+	var freq_dict = {};
+	for(i=0;i<phrase.length;i++){
+		addWord(phrase[i]);
+	}
+	var freq_list = [];
+	for(i in freq_dict){
+		freq_list.push(freq_dict[i]);
+	}
+	
+	freq_list.sort(function(a,b){
+		return b.count-a.count;
+	})
+	
+	
+	while(freq_list.length>300){
+		freq_list.pop();
+	}
+	
+	
+	var maxval = -Infinity;
+	var minval = Infinity;
+	for(i=0;i<freq_list.length;i++){
+		if(freq_list[i].count<minval){
+			minval = freq_list[i].count;
+		}
+		if(freq_list[i].count>maxval){
+			maxval = freq_list[i].count;
+		}
+	}
+	
+	d3.select("body").selectAll("p")
+		 .data(freq_list)
+		 .enter()
+		 .append("div")
+		 .html(function(d){
+			return '<table style="width:100%"><tr><td style="text-align:left;font-weight:bold;">'+d.word+'</td><td style="text-align:right;color:black;"> '+d.count+'</td></tr></table>';
+		 })
+		 .style("width",function(d){
+			return  (Math.log(d.count)/Math.log(minval)*150).toFixed(0)+"px";
+		 })
+		 .style("background" , function(d){
+			return "linear-gradient(to right, "+colscale(Math.pow((d.count-minval)/(maxval-minval),0.4)).darker(20).hex()+"," + colscale(Math.pow((d.count-minval)/(maxval-minval),0.4)).brighter(10).desaturate(10) + " 100%)";
+		 })
+		 .style("color",function(d){
+				return colscale(Math.pow((d.count-minval)/(maxval-minval),0.4)).brighter(50);
+		 })
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 41473
+</script>
+</html>
